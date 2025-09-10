@@ -1,4 +1,5 @@
 import express from 'express';
+import cors from 'cors';
 import morgan from 'morgan';
 import validator from 'validator';
 import invariant from 'tiny-invariant';
@@ -11,6 +12,15 @@ import { createTransactionBuilder, quickSend } from './transaction-builder.js';
 import { collectUtxosForWallet } from './utxo-collector.js';
 
 const app = express();
+
+// CORS configuration - allows requests from any origin in development
+app.use(cors({
+  origin: true, // Allow all origins in development
+  credentials: true, // Allow cookies/credentials
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit:'1mb' }));
 app.use(morgan('dev'));
 
@@ -41,6 +51,14 @@ app.post('/utxos', async (req,res,next)=>{
   try{
     const { addresses, minconf=0 } = req.body||{};
     invariant(Array.isArray(addresses) && addresses.length, 'addresses[] required');
+    
+    // Import addresses as watch-only first (for regtest)
+    try {
+      await importWatchOnly(addresses, false);
+    } catch (importError) {
+      console.log('Import watch-only failed (might already exist):', importError.message);
+    }
+    
     const utxos = await getUtxosForAddresses(addresses, minconf);
     res.json({ utxos: utxos.map(u=>({
       txid: u.txid, vout: u.vout, address: u.address,
@@ -123,6 +141,20 @@ app.post('/wallet/restore', async (req, res, next) => {
       addresses: wallet.addresses,
       publicKey: wallet.publicKey,
       derivationPath: wallet.derivationPath
+    });
+  } catch (e) { next(e); }
+});
+
+// Extract private key from mnemonic (for demo purposes)
+app.post('/wallet/extract-key', async (req, res, next) => {
+  try {
+    const { mnemonic, network = 'regtest' } = req.body || {};
+    invariant(typeof mnemonic === 'string', 'mnemonic required');
+    const wallet = restoreWalletFromMnemonic(mnemonic, network);
+    res.json({
+      privateKey: wallet.privateKey,
+      addresses: wallet.addresses,
+      publicKey: wallet.publicKey
     });
   } catch (e) { next(e); }
 });
@@ -274,7 +306,7 @@ app.post('/transaction/build', async (req, res, next) => {
 // Mine block (regtest only)
 app.post('/regtest/mine', async (req, res, next) => {
   try {
-    const { privateKey, network = 'regtest', blocks = 1 } = req.body || {};
+    const { privateKey, network = 'regtest', blocks = 1, address } = req.body || {};
     invariant(network === 'regtest', 'Mining only available in regtest mode');
     
     if (privateKey) {
@@ -286,10 +318,10 @@ app.post('/regtest/mine', async (req, res, next) => {
       }
       res.json({ blocks: blockHashes });
     } else {
-      // Mine to default address if no private key provided
+      // Mine to specified address or default address
       const { rpc } = await import('./rpc.js');
-      const address = 'bcrt1qz5f6kts27vq6rer3qkwdzfr0zlptwgyetwlm6m'; // default regtest address
-      const blockHashes = await rpc('generatetoaddress', [blocks, address]);
+      const targetAddress = address || 'bcrt1qz5f6kts27vq6rer3qkwdzfr0zlptwgyetwlm6m'; // default regtest address
+      const blockHashes = await rpc('generatetoaddress', [blocks, targetAddress]);
       res.json({ blocks: blockHashes });
     }
   } catch (e) { next(e); }
