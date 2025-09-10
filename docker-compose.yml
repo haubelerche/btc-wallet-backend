@@ -1,0 +1,29 @@
+version: "3.8"
+services:
+  bitcoind:
+    image: bitcoin/bitcoin:27.0
+    container_name: bitcoind-regtest
+    command: >
+      -regtest=1 -server=1 -printtoconsole=1
+      -rpcallowip=0.0.0.0/0 -rpcbind=0.0.0.0
+      -rpcuser=${BTC_RPC_USER:-devuser} -rpcpassword=${BTC_RPC_PASS:-devpass}
+      -txindex=1 -fallbackfee=0.0002
+    ports:
+      - "18443:18443"   # RPC regtest
+      - "18444:18444"   # P2P regtest
+    volumes:
+      - bitcoind-data:/bitcoin/.bitcoin
+
+  api:
+    build: .
+    environment:
+      - PORT=8080
+      - BTC_RPC_URL=http://bitcoind:18443
+      - BTC_RPC_USER=${BTC_RPC_USER:-devuser}
+      - BTC_RPC_PASS=${BTC_RPC_PASS:-devpass}
+      - FEE_FALLBACK=2.0
+    ports: ["8080:8080"]
+    depends_on: [bitcoind]
+
+volumes:
+  bitcoind-data:

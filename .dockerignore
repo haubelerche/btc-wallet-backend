@@ -1,0 +1,38 @@
+# Ignore node modules (installed during image build)
+node_modules
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# Git
+.git
+.gitignore
+
+# IDE/editor
+.vscode
+.idea
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Tests and local artifacts
+coverage
+*.tgz
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+!Dockerfile
+!docker-compose.yml
+
+# Environment
+.env
+.env.*
+!.env.example
+
