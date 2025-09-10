@@ -2,7 +2,7 @@
 
 This implementation follows the detailed Bitcoin transaction flow as specified, ensuring proper handling of all address types (P2PKH, P2SH-P2WPKH, P2WPKH) and complete UTXO management.
 
-## Quick Start
+## Quick Start ( IF your mine teammate, YOU HAVE TO DOWNLOAD DOCKER, SIGN IN BY GIT HUB OR GMAIL THEN RUN BUOC 3, and run the project npm run dev
 1. Clone repository
 2. Copy environment template:
    `cp .env.example .env` (Windows: `copy .env.example .env`)
